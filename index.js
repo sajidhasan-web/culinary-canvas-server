@@ -60,24 +60,39 @@ async function run() {
   });
 
 
-      app.post("/purchases", async(req, res)=>{
+  app.post("/purchases", async(req, res)=>{
+    try {
         const { name, price, quantity, buyerName, buyerEmail, buyingDate } = req.body;
-
-        // Create a purchase object
         const purchase = {
             name,
             price, 
             quantity,
             buyerName,
             buyerEmail,
-            buyingDate: new Date(buyingDate) // Convert buyingDate string to Date object
+            buyingDate: new Date(buyingDate)
         };
-
         const result = await purchasesCollection.insertOne(purchase)
+        res.json(result);
+    } catch (error) {
+        console.error('Error storing purchase:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
 
-        res.send(result);
-        
-      })
+      
+app.patch("/foods/:id", async(req, res)=>{
+  try {
+      const { id } = req.params;
+      const { quantity } = req.body;
+      await foodsCollection.updateOne({ _id: new ObjectId(id) }, { $inc: { quantity: -quantity } });
+      res.json({ message: 'Quantity updated successfully' });
+  } catch (error) {
+      console.error('Error updating quantity:', error);
+      res.status(500).json({ message: 'Internal server error' });
+  }
+});
+    
+  
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
