@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app = express();
 const port = process.env.PORT || 9000;
 
@@ -37,8 +37,9 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    // await client.connect();
+    await client.connect();
     const foodsCollection = client.db('CulinaryCanvasDB').collection('foods')
+    const purchasesCollection = client.db('CulinaryCanvasDB').collection('purchases')
 
 
     app.get('/foods', async(req, res) => {
@@ -48,9 +49,35 @@ async function run() {
 
     app.get("/food/:id", async(req, res) => {
         const id = req.params.id;
-        const result = await foodsCollection.findOne({_id: ObjectId(id)});
+        const result = await foodsCollection.findOne({_id: new ObjectId(id)});
         res.send(result);
     })
+
+    app.get("/search", async(req, res) => {
+      const { query } = req.query;
+      const result = await foodsCollection.find({ name: { $regex: query, $options: 'i' } }).toArray();
+      res.send(result);
+  });
+
+
+      app.post("/purchases", async(req, res)=>{
+        const { name, price, quantity, buyerName, buyerEmail, buyingDate } = req.body;
+
+        // Create a purchase object
+        const purchase = {
+            name,
+            price, 
+            quantity,
+            buyerName,
+            buyerEmail,
+            buyingDate: new Date(buyingDate) // Convert buyingDate string to Date object
+        };
+
+        const result = await purchasesCollection.insertOne(purchase)
+
+        res.send(result);
+        
+      })
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
