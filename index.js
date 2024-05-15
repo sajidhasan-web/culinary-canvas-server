@@ -3,7 +3,7 @@ const cors = require("cors");
 require("dotenv").config();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const app = express();
-const port = process.env.PORT || 9000;
+const port = process.env.PORT || 5000;
 
 const corsOptions = {
   origin: ["http://localhost:5173", "http://localhost:5174"],
@@ -44,7 +44,7 @@ async function run() {
     });
 
     app.post("/add-food", async (req, res) => {
-      try {
+     
         const {name, image, price,  quantity,  origin,  description,  userEmail,  userName } = req.body;
         const food = {
           name,
@@ -58,10 +58,7 @@ async function run() {
         };
         const result = await foodsCollection.insertOne(food);
         res.json(result);
-      } catch (error) {
-        console.error("Error storing food:", error);
-        res.status(500).json({ message: "Internal server error" });
-      }
+     
     });
 
     app.get("/food/:id", async (req, res) => {
@@ -69,6 +66,45 @@ async function run() {
       const result = await foodsCollection.findOne({ _id: new ObjectId(id) });
       res.send(result);
     });
+
+    app.get("/updateFood/:id", async (req, res) => {
+      const id = req.params.id;
+      const result = await foodsCollection.findOne({ _id: new ObjectId(id) });
+      res.json(result);
+    })
+
+    app.put("/updateFood/:id", async (req, res) => {
+      try {
+          const id = req.params.id;
+          const filter = {_id: new ObjectId(id)}
+          const options = { upsert: true };
+          const updatedFood = req.body
+          // const { name, image, price, category, quantity, origin, description } = req.body;
+          const updatedDoc = {
+             $set:{
+              name: updatedFood.name,
+              price: parseFloat(updatedFood.price),
+              image: updatedFood.image,
+              category: updatedFood.category,
+              quantity: parseInt(updatedFood.quantity),
+              origin: updatedFood.origin,
+              description: updatedFood.description
+             }
+          };
+          console.log(updatedDoc);
+          const result = await foodsCollection.updateOne(filter, updatedDoc, options);
+          res.send(result)
+          if (result.modifiedCount > 0) {
+              res.json({ success: true, message: "Food updated successfully" });
+          } else {
+              res.status(404).json({ success: false, message: "Food not found" });
+          }
+      } catch (error) {
+          console.error("Error updating food:", error);
+          res.status(500).json({ success: false, message: "Internal server error" });
+      }
+  });
+  
 
     app.get("/my-added-food/:email", async (req, res) => {
       try {
@@ -92,11 +128,12 @@ async function run() {
 
     app.post("/purchases", async (req, res) => {
       try {
-        const { name, price, quantity, buyerName, buyerEmail, buyingDate } =
+        const { name, price, quantity, category , buyerName, buyerEmail, buyingDate } =
           req.body;
         const purchase = {
           name,
           price,
+          category,
           quantity,
           buyerName,
           buyerEmail,
