@@ -29,7 +29,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
     const foodsCollection = client.db("CulinaryCanvasDB").collection("foods");
     const purchasesCollection = client
       .db("CulinaryCanvasDB")
@@ -73,6 +73,23 @@ async function run() {
       res.json(result);
     })
 
+
+  // top foods
+  app.get("/top-foods", async (req, res) => {
+    try {
+        // Find the 6 foods with the least quantity
+        const result = await foodsCollection.find().sort({ quantity: 1 }).limit(6).toArray();
+        res.send(result);
+    } catch (error) {
+        console.error("Error fetching top foods:", error);
+        res.status(500).json({ success: false, message: "Internal server error" });
+    }
+});
+  
+
+   
+    
+
     app.put("/updateFood/:id", async (req, res) => {
       try {
           const id = req.params.id;
@@ -104,19 +121,28 @@ async function run() {
           res.status(500).json({ success: false, message: "Internal server error" });
       }
   });
+
+
   
 
     app.get("/my-added-food/:email", async (req, res) => {
-      try {
         const email = req.params.email;
         const result = await foodsCollection.find({ userEmail: email }).toArray();
         res.send(result);
-      } catch (error) {
-        console.error(error);
-        res.status(500).send("An error occurred while fetching data.");
-      }
+       
     });
-    
+
+    app.get("/myOrderedFood/:email", async(req, res)=>{
+      const email = req.params.email;
+      const result = await purchasesCollection.find({ buyerEmail: email }).toArray();
+      res.send(result);
+    })
+     
+    app.delete("/delete-food/:id", async (req, res) => {
+      const id = req.params.id;
+      const result = await purchasesCollection.deleteOne({ _id: new ObjectId(id) });
+      res.send(result);
+    });
 
     app.get("/search", async (req, res) => {
       const { query } = req.query;
@@ -127,12 +153,13 @@ async function run() {
     });
 
     app.post("/purchases", async (req, res) => {
-      try {
-        const { name, price, quantity, category , buyerName, buyerEmail, buyingDate } =
+   
+        const { name, image, price, quantity, category , buyerName, buyerEmail, buyingDate } =
           req.body;
         const purchase = {
           name,
           price,
+          image,
           category,
           quantity,
           buyerName,
@@ -141,10 +168,7 @@ async function run() {
         };
         const result = await purchasesCollection.insertOne(purchase);
         res.json(result);
-      } catch (error) {
-        console.error("Error storing purchase:", error);
-        res.status(500).json({ message: "Internal server error" });
-      }
+      
     });
 
     app.patch("/foods/:id", async (req, res) => {
@@ -161,6 +185,14 @@ async function run() {
         res.status(500).json({ message: "Internal server error" });
       }
     });
+
+    app.delete("/deleteFood/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await foodsCollection.deleteOne(query);
+      return res.send(result)    
+    
+  });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
